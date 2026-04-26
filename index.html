@@ -1,0 +1,719 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"/>
+<meta name="mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-capable" content="yes"/>
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+<meta name="apple-mobile-web-app-title" content="Custodia Gabriel"/>
+<title>🧒 Custodia Gabriel</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+  body{background:#0F172A;color:#F1F5F9;font-family:Georgia,serif;min-height:100vh;padding-bottom:60px;}
+  button{cursor:pointer;font-family:Georgia,serif;}
+  textarea{font-family:Georgia,serif;}
+  ::-webkit-scrollbar{width:4px;}
+  ::-webkit-scrollbar-track{background:#0F172A;}
+  ::-webkit-scrollbar-thumb{background:#334155;border-radius:4px;}
+  @keyframes fadeIn{from{opacity:0;transform:translateY(-8px);}to{opacity:1;transform:translateY(0);}}
+  @keyframes spin{to{transform:rotate(360deg);}}
+  .toast{position:fixed;top:16px;right:16px;z-index:9999;padding:10px 20px;border-radius:8px;font-size:13px;font-family:monospace;box-shadow:0 4px 20px rgba(0,0,0,.5);animation:fadeIn .2s ease;max-width:300px;}
+  .spinner{width:18px;height:18px;border:2px solid #334155;border-top-color:#38BDF8;border-radius:50%;animation:spin .7s linear infinite;display:inline-block;vertical-align:middle;margin-right:8px;}
+  .day-cell{aspect-ratio:1;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;font-size:13px;position:relative;transition:all .1s;user-select:none;}
+  .panel-overlay{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.65);display:flex;align-items:flex-end;justify-content:center;}
+  .panel{background:#1E293B;border-radius:20px 20px 0 0;width:100%;max-width:480px;max-height:88vh;overflow-y:auto;padding:20px 20px 36px;box-shadow:0 -8px 40px rgba(0,0,0,.6);border:1px solid #334155;border-bottom:none;}
+  .photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;}
+  .photo-thumb{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;border:1px solid #334155;background:#0F172A;display:flex;align-items:center;justify-content:center;}
+  .photo-thumb img{width:100%;height:100%;object-fit:cover;cursor:zoom-in;display:block;}
+  .del-btn{position:absolute;top:4px;right:4px;background:rgba(0,0,0,.78);border:none;color:#fff;border-radius:50%;width:22px;height:22px;font-size:11px;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+  .lightbox{position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,.95);display:flex;align-items:center;justify-content:center;cursor:zoom-out;}
+  .lightbox img{max-width:95vw;max-height:90vh;border-radius:10px;object-fit:contain;}
+  .nav-arrow{position:absolute;top:50%;transform:translateY(-50%);font-size:44px;color:#fff;cursor:pointer;opacity:.8;padding:0 12px;}
+  input[type=file]{display:none;}
+  .upload-btn{width:100%;padding:13px;border-radius:10px;border:2px dashed #334155;background:transparent;color:#94A3B8;font-size:14px;transition:all .2s;}
+  .upload-btn:hover{border-color:#38BDF8;color:#38BDF8;}
+  .stat-chip{flex:1;border-radius:8px;padding:7px 8px;font-size:12px;text-align:center;}
+  .history-item{background:#1E293B;border:1px solid #334155;border-radius:10px;padding:12px 16px;margin-bottom:8px;cursor:pointer;display:flex;align-items:center;gap:12px;transition:border-color .2s;}
+  .history-item:hover{border-color:#38BDF8;}
+  .google-btn{background:#fff;color:#1F2937;border:none;padding:9px 20px;border-radius:20px;font-size:13px;font-weight:bold;display:inline-flex;align-items:center;gap:8px;box-shadow:0 2px 8px rgba(0,0,0,.3);}
+  .connected-badge{background:#10B98122;border:1px solid #10B981;color:#10B981;padding:6px 14px;border-radius:16px;font-size:12px;font-weight:bold;}
+  .disconnect-btn{background:transparent;border:1px solid #334155;color:#94A3B8;padding:6px 12px;border-radius:16px;font-size:11px;}
+  .pdf-btn{background:linear-gradient(135deg,#7C3AED,#4F46E5);border:none;color:#fff;padding:10px 20px;border-radius:10px;font-size:13px;font-weight:bold;display:inline-flex;align-items:center;gap:8px;box-shadow:0 2px 12px rgba(124,58,237,.4);}
+  .pdf-btn:disabled{opacity:.5;cursor:not-allowed;}
+</style>
+</head>
+<body>
+
+<!-- TOAST -->
+<div id="toast" class="toast" style="display:none"></div>
+
+<!-- LIGHTBOX -->
+<div id="lightbox" class="lightbox" style="display:none" onclick="closeLightbox()">
+  <img id="lightbox-img" src="" alt=""/>
+  <div style="position:absolute;top:16px;right:20px;color:#fff;font-size:28px;cursor:pointer;" onclick="closeLightbox()">✕</div>
+  <div class="nav-arrow" style="left:0" onclick="event.stopPropagation();lbNav(-1)">‹</div>
+  <div class="nav-arrow" style="right:0" onclick="event.stopPropagation();lbNav(1)">›</div>
+  <div id="lb-counter" style="position:absolute;bottom:20px;color:#94A3B8;font-size:13px;"></div>
+</div>
+
+<!-- PANEL DETALLE -->
+<div id="panel-overlay" class="panel-overlay" style="display:none" onclick="closePanel()">
+  <div class="panel" onclick="event.stopPropagation()">
+    <div style="width:40px;height:4px;background:#475569;border-radius:4px;margin:0 auto 20px;"></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:18px;">
+      <div>
+        <div style="font-size:11px;letter-spacing:3px;color:#94A3B8;text-transform:uppercase;">Detalle del día</div>
+        <div id="panel-title" style="font-size:20px;font-weight:bold;margin-top:2px;"></div>
+      </div>
+      <div id="panel-badge" style="border-radius:8px;padding:6px 14px;font-size:13px;font-weight:bold;"></div>
+    </div>
+    <!-- Nota -->
+    <div style="margin-bottom:22px;">
+      <div style="font-size:11px;color:#94A3B8;margin-bottom:7px;letter-spacing:2px;text-transform:uppercase;">📝 Nota</div>
+      <textarea id="panel-note" rows="3" placeholder="Agrega una nota para este día…"
+        style="width:100%;background:#0F172A;border:1px solid #334155;border-radius:10px;color:#F1F5F9;padding:10px 14px;font-size:14px;resize:vertical;outline:none;"></textarea>
+      <button onclick="saveNote()" style="margin-top:8px;background:#38BDF822;border:1px solid #38BDF8;color:#38BDF8;padding:7px 18px;border-radius:8px;font-size:13px;">
+        Guardar nota
+      </button>
+    </div>
+    <!-- Fotos -->
+    <div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <div style="font-size:11px;color:#94A3B8;letter-spacing:2px;text-transform:uppercase;">📸 Fotos · Google Drive</div>
+        <div id="drive-status-panel" style="font-size:11px;color:#F59E0B;">⚠️ Conéctate primero</div>
+      </div>
+      <div id="photo-grid" class="photo-grid"></div>
+      <input type="file" id="file-input" accept="image/*" multiple onchange="handleFiles(event)"/>
+      <button class="upload-btn" onclick="triggerUpload()" id="upload-btn">📷 Agregar foto(s)</button>
+      <div id="no-photos-msg" style="text-align:center;color:#94A3B8;font-size:12px;margin-top:10px;">Sin fotos. Se guardarán en tu Google Drive sin límite.</div>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div style="max-width:480px;margin:0 auto;">
+
+  <!-- HEADER -->
+  <div style="background:linear-gradient(135deg,#0F172A,#1E293B);border-bottom:1px solid #334155;padding:24px 20px 18px;text-align:center;">
+    <div style="font-size:11px;letter-spacing:6px;color:#94A3B8;text-transform:uppercase;margin-bottom:4px;">Custodia</div>
+    <div style="font-size:34px;font-weight:bold;letter-spacing:-1px;">🧒 Gabriel</div>
+    <div style="margin-top:14px;display:flex;align-items:center;justify-content:center;gap:10px;flex-wrap:wrap;">
+      <button id="auth-btn" class="google-btn" onclick="signIn()">
+        <svg width="16" height="16" viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>
+        Conectar Google Drive
+      </button>
+      <div id="connected-ui" style="display:none;display:none;align-items:center;gap:8px;">
+        <span class="connected-badge">☁️ Drive conectado</span>
+        <button class="disconnect-btn" onclick="signOut()">Desconectar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODOS -->
+  <div style="display:flex;gap:10px;justify-content:center;padding:18px 16px 8px;">
+    <button id="btn-papa" onclick="setMode('papa')" style="padding:10px 18px;border-radius:10px;border:2px solid #3B82F6;background:#3B82F622;color:#3B82F6;font-size:14px;font-weight:bold;">👨 Papá</button>
+    <button id="btn-mama" onclick="setMode('mama')" style="padding:10px 18px;border-radius:10px;border:2px solid #334155;background:transparent;color:#94A3B8;font-size:14px;">👩 Mamá</button>
+    <button id="btn-none" onclick="setMode('none')" style="padding:10px 18px;border-radius:10px;border:2px solid #334155;background:transparent;color:#94A3B8;font-size:14px;">✕ Borrar</button>
+  </div>
+
+  <div style="padding:0 8px;">
+    <!-- NAV MES -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 8px 10px;">
+      <button onclick="prevMonth()" style="background:#1E293B;border:1px solid #334155;color:#F1F5F9;width:40px;height:40px;border-radius:10px;font-size:22px;">‹</button>
+      <div style="text-align:center;">
+        <div id="month-label" style="font-size:20px;font-weight:bold;"></div>
+        <div id="year-label" style="font-size:13px;color:#94A3B8;"></div>
+      </div>
+      <button onclick="nextMonth()" style="background:#1E293B;border:1px solid #334155;color:#F1F5F9;width:40px;height:40px;border-radius:10px;font-size:22px;">›</button>
+    </div>
+
+    <!-- STATS -->
+    <div style="display:flex;gap:8px;margin-bottom:14px;padding:0 4px;">
+      <div id="stat-papa" class="stat-chip" style="background:#3B82F618;border:1px solid #3B82F644;color:#3B82F6;">👨 Papá: <b>0</b></div>
+      <div id="stat-mama" class="stat-chip" style="background:#EC489918;border:1px solid #EC489944;color:#EC4899;">👩 Mamá: <b>0</b></div>
+      <div id="stat-free" class="stat-chip" style="background:#47556918;border:1px solid #47556944;color:#475569;">Sin asignar: <b>0</b></div>
+    </div>
+
+    <!-- DÍAS SEMANA -->
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;margin-bottom:3px;">
+      <div style="text-align:center;font-size:11px;color:#94A3B8;padding:4px 0;">Dom</div>
+      <div style="text-align:center;font-size:11px;color:#94A3B8;padding:4px 0;">Lun</div>
+      <div style="text-align:center;font-size:11px;color:#94A3B8;padding:4px 0;">Mar</div>
+      <div style="text-align:center;font-size:11px;color:#94A3B8;padding:4px 0;">Mié</div>
+      <div style="text-align:center;font-size:11px;color:#94A3B8;padding:4px 0;">Jue</div>
+      <div style="text-align:center;font-size:11px;color:#94A3B8;padding:4px 0;">Vie</div>
+      <div style="text-align:center;font-size:11px;color:#94A3B8;padding:4px 0;">Sáb</div>
+    </div>
+
+    <!-- GRILLA -->
+    <div id="calendar-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:3px;"></div>
+
+    <!-- TIP -->
+    <div style="text-align:center;color:#94A3B8;font-size:12px;margin-top:14px;padding:10px 12px;background:#1E293B;border-radius:8px;border:1px solid #334155;">
+      💡 Arrastra para asignar varios días · Toca un día asignado para fotos y notas
+    </div>
+
+    <!-- BOTONES ACCIÓN -->
+    <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;justify-content:center;">
+      <button onclick="clearMonth()" style="background:transparent;border:1px solid #475569;color:#64748B;padding:7px 18px;border-radius:8px;font-size:12px;">
+        🗑 Limpiar mes
+      </button>
+      <button id="pdf-btn" class="pdf-btn" onclick="generatePDF()" disabled>
+        📄 Informe PDF mensual
+      </button>
+    </div>
+
+    <!-- HISTORIAL -->
+    <div id="history-section" style="margin-top:28px;display:none;">
+      <div style="font-size:11px;letter-spacing:4px;color:#94A3B8;text-transform:uppercase;margin-bottom:12px;padding-left:4px;">Historial reciente</div>
+      <div id="history-list"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Constantes ─────────────────────────────────────────────────────────────
+const CLIENT_ID = "614055728347-va67li9lkf1i2gliujut7js6mp0r915b.apps.googleusercontent.com";
+const SCOPES    = "https://www.googleapis.com/auth/drive.file";
+const FOLDER_NM = "Custodia Gabriel";
+const META_KEY  = "gcustody_v4_meta";
+const MONTHS    = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+const TODAY     = new Date();
+
+// ── Estado global ──────────────────────────────────────────────────────────
+let meta = {};         // { dateKey: { who, note, photos:[{driveId,name}] } }
+let mode = "papa";
+let viewYear  = TODAY.getFullYear();
+let viewMonth = TODAY.getMonth();
+let token = null;
+let folderId = null;
+let tokenClient = null;
+
+// Drag
+let dragging = false, didDrag = false, selStart = null, selEnd = null;
+
+// Panel
+let panelKey = null;
+let panelPhotos = []; // [{driveId,name,src}]
+let lbIdx = null;
+
+// ── Storage ────────────────────────────────────────────────────────────────
+function loadMeta() {
+  try { const r = localStorage.getItem(META_KEY); return r ? JSON.parse(r) : {}; }
+  catch { return {}; }
+}
+function saveMeta() {
+  try { localStorage.setItem(META_KEY, JSON.stringify(meta)); return true; }
+  catch { showToast("Error al guardar","err"); return false; }
+}
+
+// ── Toast ──────────────────────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg, type="ok") {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.style.background = type==="err"?"#EF4444":type==="warn"?"#F59E0B":"#10B981";
+  t.style.color = "#fff";
+  t.style.display = "block";
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.style.display="none", 3500);
+}
+
+// ── Google Drive ───────────────────────────────────────────────────────────
+function driveHeaders(extra={}) {
+  return { "Authorization": `Bearer ${token}`, ...extra };
+}
+
+async function findOrCreateFolder() {
+  const q = encodeURIComponent(`name='${FOLDER_NM}' and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+  const r = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id)`, { headers: driveHeaders() });
+  const d = await r.json();
+  if (d.files && d.files.length) return d.files[0].id;
+  const cr = await fetch("https://www.googleapis.com/drive/v3/files", {
+    method:"POST", headers: driveHeaders({"Content-Type":"application/json"}),
+    body: JSON.stringify({ name: FOLDER_NM, mimeType:"application/vnd.google-apps.folder" })
+  });
+  const f = await cr.json();
+  return f.id;
+}
+
+async function uploadPhoto(dataUrl, filename) {
+  const arr = dataUrl.split(","); const mime = arr[0].match(/:(.*?);/)[1];
+  const bstr = atob(arr[1]); const u8 = new Uint8Array(bstr.length);
+  for (let i=0;i<bstr.length;i++) u8[i]=bstr.charCodeAt(i);
+  const blob = new Blob([u8],{type:mime});
+  const formMeta = JSON.stringify({name:filename,parents:[folderId]});
+  const form = new FormData();
+  form.append("metadata", new Blob([formMeta],{type:"application/json"}));
+  form.append("file", blob);
+  const r = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name", {
+    method:"POST", headers: driveHeaders(), body: form
+  });
+  return await r.json();
+}
+
+async function downloadPhoto(fileId) {
+  const r = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, { headers: driveHeaders() });
+  const blob = await r.blob();
+  return new Promise(res=>{ const rd=new FileReader(); rd.onload=()=>res(rd.result); rd.readAsDataURL(blob); });
+}
+
+async function deleteFile(fileId) {
+  await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}`,{ method:"DELETE", headers: driveHeaders() });
+}
+
+async function uploadFileToDrive(filename, blob, mimeType) {
+  const formMeta = JSON.stringify({name:filename,parents:[folderId]});
+  const form = new FormData();
+  form.append("metadata", new Blob([formMeta],{type:"application/json"}));
+  form.append("file", new Blob([blob],{type:mimeType}));
+  const r = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink", {
+    method:"POST", headers: driveHeaders(), body: form
+  });
+  return await r.json();
+}
+
+// ── Auth ───────────────────────────────────────────────────────────────────
+window.addEventListener("load", ()=>{
+  meta = loadMeta();
+  renderCalendar();
+  renderHistory();
+
+  // Inicializar GIS cuando cargue
+  const check = setInterval(()=>{
+    if (window.google && window.google.accounts) {
+      clearInterval(check);
+      tokenClient = google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: SCOPES,
+        callback: async (resp) => {
+          if (resp.error) { showToast("Error de autorización: "+resp.error,"err"); return; }
+          token = resp.access_token;
+          onSignedIn();
+        }
+      });
+    }
+  }, 300);
+});
+
+function signIn() {
+  if (!tokenClient) { showToast("Cargando Google...","warn"); return; }
+  tokenClient.requestAccessToken({prompt:"consent"});
+}
+
+async function onSignedIn() {
+  showToast("Conectado a Google Drive ✓");
+  document.getElementById("auth-btn").style.display = "none";
+  const cui = document.getElementById("connected-ui");
+  cui.style.display = "flex";
+  document.getElementById("pdf-btn").disabled = false;
+  document.getElementById("drive-status-panel").textContent = "☁️ Conectado";
+  document.getElementById("drive-status-panel").style.color = "#10B981";
+  try { folderId = await findOrCreateFolder(); }
+  catch(e) { showToast("No se pudo acceder a Drive","warn"); }
+}
+
+function signOut() {
+  if (token) google.accounts.oauth2.revoke(token, ()=>{});
+  token = null; folderId = null;
+  document.getElementById("auth-btn").style.display = "inline-flex";
+  document.getElementById("connected-ui").style.display = "none";
+  document.getElementById("pdf-btn").disabled = true;
+  document.getElementById("drive-status-panel").textContent = "⚠️ Conéctate primero";
+  document.getElementById("drive-status-panel").style.color = "#F59E0B";
+  showToast("Sesión cerrada");
+}
+
+// ── Compresión ─────────────────────────────────────────────────────────────
+function compress(dataUrl, maxPx=1200, q=0.82) {
+  return new Promise(res=>{
+    const img=new Image(); img.onload=()=>{
+      let {width:w,height:h}=img;
+      if(w>maxPx||h>maxPx){if(w>h){h=Math.round(h/w*maxPx);w=maxPx;}else{w=Math.round(w/h*maxPx);h=maxPx;}}
+      const c=document.createElement("canvas"); c.width=w; c.height=h;
+      c.getContext("2d").drawImage(img,0,0,w,h);
+      res(c.toDataURL("image/jpeg",q));
+    }; img.src=dataUrl;
+  });
+}
+
+// ── Calendario ─────────────────────────────────────────────────────────────
+function dk(y,m,d){ return `${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`; }
+
+function setMode(m) {
+  mode = m;
+  ["papa","mama","none"].forEach(x=>{
+    const btn = document.getElementById("btn-"+x);
+    const colors = {papa:"#3B82F6",mama:"#EC4899",none:"#64748B"};
+    if(x===m){btn.style.borderColor=colors[x];btn.style.background=colors[x]+"22";btn.style.color=colors[x];btn.style.fontWeight="bold";}
+    else{btn.style.borderColor="#334155";btn.style.background="transparent";btn.style.color="#94A3B8";btn.style.fontWeight="normal";}
+  });
+}
+
+function renderCalendar() {
+  const grid = document.getElementById("calendar-grid");
+  grid.innerHTML = "";
+  const dim = new Date(viewYear, viewMonth+1, 0).getDate();
+  const fst = new Date(viewYear, viewMonth, 1).getDay();
+  const pfx = `${viewYear}-${String(viewMonth+1).padStart(2,"0")}`;
+  const moKeys = Object.keys(meta).filter(k=>k.startsWith(pfx));
+  const papaC = moKeys.filter(k=>meta[k]?.who==="papa").length;
+  const mamaC = moKeys.filter(k=>meta[k]?.who==="mama").length;
+
+  document.getElementById("month-label").textContent = MONTHS[viewMonth];
+  document.getElementById("year-label").textContent = viewYear;
+  document.getElementById("stat-papa").innerHTML = `👨 Papá: <b>${papaC}</b>`;
+  document.getElementById("stat-mama").innerHTML = `👩 Mamá: <b>${mamaC}</b>`;
+  document.getElementById("stat-free").innerHTML = `Sin asignar: <b>${dim-papaC-mamaC}</b>`;
+
+  // Celdas vacías
+  for(let i=0;i<fst;i++){const e=document.createElement("div");grid.appendChild(e);}
+
+  for(let d=1;d<=dim;d++){
+    const k=dk(viewYear,viewMonth,d);
+    const ent=meta[k]; const who=ent?.who;
+    const hasP=(ent?.photos?.length||0)>0; const hasN=!!(ent?.note);
+    const isT=d===TODAY.getDate()&&viewMonth===TODAY.getMonth()&&viewYear===TODAY.getFullYear();
+
+    const cell=document.createElement("div");
+    cell.className="day-cell";
+    cell.dataset.day=d;
+    applyCellStyle(cell,who,isT,false);
+
+    cell.innerHTML=`<span>${d}</span>${who?`<span style="font-size:9px;margin-top:-1px;opacity:.85">${who==="papa"?"👨":"👩"}</span>`:""}${(hasP||hasN)?`<div style="position:absolute;bottom:2px;right:3px;display:flex;gap:1px;">${hasP?'<span style="font-size:7px">📷</span>':""}${hasN?'<span style="font-size:7px">📝</span>':""}</div>`:""}`;
+
+    cell.addEventListener("mousedown",e=>{e.preventDefault();startDrag(d);});
+    cell.addEventListener("touchstart",e=>{e.preventDefault();startDrag(d);},{passive:false});
+    cell.addEventListener("mouseenter",()=>continueDrag(d));
+    cell.addEventListener("touchmove",e=>{
+      e.preventDefault();
+      const t=e.touches[0];
+      const el=document.elementFromPoint(t.clientX,t.clientY);
+      if(el&&el.dataset.day) continueDrag(parseInt(el.dataset.day));
+    },{passive:false});
+    cell.addEventListener("mouseup",()=>endDrag(d));
+    cell.addEventListener("touchend",()=>endDrag(d));
+
+    grid.appendChild(cell);
+  }
+}
+
+function applyCellStyle(cell,who,isT,inSel){
+  const selColor = mode==="papa"?"#3B82F6":mode==="mama"?"#EC4899":"#64748B";
+  cell.style.background = inSel?selColor+"44":who==="papa"?"#3B82F633":who==="mama"?"#EC489933":"#1E293B";
+  cell.style.border = inSel?`2px solid ${selColor}`:isT?`2px solid #38BDF8`:who==="papa"?`2px solid #3B82F6`:who==="mama"?`2px solid #EC4899`:`1px solid #334155`;
+  cell.style.color = who==="papa"?"#3B82F6":who==="mama"?"#EC4899":isT?"#38BDF8":"#F1F5F9";
+}
+
+function getDaysBetween(a,b){
+  const s=Math.min(a,b),e=Math.max(a,b);
+  return Array.from({length:e-s+1},(_,i)=>s+i);
+}
+
+function startDrag(d){ dragging=true; didDrag=false; selStart=d; selEnd=d; highlightRange(); }
+function continueDrag(d){ if(!dragging||d===selEnd)return; didDrag=true; selEnd=d; highlightRange(); }
+
+function highlightRange(){
+  const range=getDaysBetween(selStart,selEnd);
+  document.querySelectorAll(".day-cell").forEach(cell=>{
+    const d=parseInt(cell.dataset.day); if(!d)return;
+    const k=dk(viewYear,viewMonth,d);
+    const who=meta[k]?.who;
+    const isT=d===TODAY.getDate()&&viewMonth===TODAY.getMonth()&&viewYear===TODAY.getFullYear();
+    applyCellStyle(cell,who,isT,range.includes(d));
+  });
+}
+
+function endDrag(d){
+  if(!dragging)return; dragging=false;
+  if(!didDrag&&d&&meta[dk(viewYear,viewMonth,d)]){
+    openPanel(dk(viewYear,viewMonth,d));
+    selStart=null;selEnd=null;didDrag=false;
+    renderCalendar();return;
+  }
+  const days=getDaysBetween(selStart??d,selEnd??d);
+  days.forEach(dd=>{
+    const k=dk(viewYear,viewMonth,dd);
+    if(mode==="none"){delete meta[k];}
+    else meta[k]={...(meta[k]||{}),who:mode,note:meta[k]?.note||"",photos:meta[k]?.photos||[]};
+  });
+  saveMeta(); renderCalendar(); renderHistory();
+  selStart=null;selEnd=null;didDrag=false;
+}
+
+document.addEventListener("mouseup",()=>{ if(dragging){dragging=false;renderCalendar();} });
+
+function prevMonth(){ if(viewMonth===0){viewYear--;viewMonth=11;}else viewMonth--; renderCalendar();renderHistory(); }
+function nextMonth(){ if(viewMonth===11){viewYear++;viewMonth=0;}else viewMonth++; renderCalendar();renderHistory(); }
+
+function clearMonth(){
+  const pfx=`${viewYear}-${String(viewMonth+1).padStart(2,"0")}`;
+  Object.keys(meta).filter(k=>k.startsWith(pfx)).forEach(k=>delete meta[k]);
+  saveMeta();renderCalendar();renderHistory();showToast("Mes limpiado");
+}
+
+// ── Historial ──────────────────────────────────────────────────────────────
+function renderHistory(){
+  const allYM=[...new Set(Object.keys(meta).map(k=>k.slice(0,7)))].sort().reverse().slice(0,6);
+  const sec=document.getElementById("history-section");
+  const list=document.getElementById("history-list");
+  if(!allYM.length){sec.style.display="none";return;}
+  sec.style.display="block"; list.innerHTML="";
+  allYM.forEach(ym=>{
+    const [y,m]=ym.split("-").map(Number);
+    const mks=Object.keys(meta).filter(k=>k.startsWith(ym));
+    const p=mks.filter(k=>meta[k]?.who==="papa").length;
+    const ma=mks.filter(k=>meta[k]?.who==="mama").length;
+    const total=p+ma;
+    const photos=mks.reduce((s,k)=>s+(meta[k]?.photos?.length||0),0);
+    const div=document.createElement("div");
+    div.className="history-item";
+    div.innerHTML=`
+      <div style="flex:1">
+        <div style="font-size:14px;font-weight:bold;">${MONTHS[m-1]} ${y}</div>
+        <div style="font-size:12px;color:#94A3B8;margin-top:2px;">${total} días ${photos>0?`· 📷 ${photos}`:""}</div>
+      </div>
+      <div style="display:flex;gap:6px;">
+        <span style="background:#3B82F622;color:#3B82F6;border:1px solid #3B82F6;border-radius:6px;padding:3px 9px;font-size:12px;">👨 ${p}</span>
+        <span style="background:#EC489922;color:#EC4899;border:1px solid #EC4899;border-radius:6px;padding:3px 9px;font-size:12px;">👩 ${ma}</span>
+      </div>
+      ${total>0?`<div style="width:50px;height:7px;border-radius:4px;background:#334155;overflow:hidden;flex-shrink:0;"><div style="width:${(p/total)*100}%;height:100%;background:#3B82F6;border-radius:4px;"></div></div>`:""}
+    `;
+    div.onclick=()=>{viewYear=y;viewMonth=m-1;renderCalendar();renderHistory();window.scrollTo(0,0);};
+    list.appendChild(div);
+  });
+}
+
+// ── Panel ──────────────────────────────────────────────────────────────────
+function openPanel(dateKey){
+  panelKey=dateKey;
+  const ent=meta[dateKey]||{};
+  const [,m,d]=dateKey.split("-");
+  document.getElementById("panel-title").textContent=`${parseInt(d)} de ${MONTHS[parseInt(m)-1]}`;
+  const who=ent.who;
+  const badge=document.getElementById("panel-badge");
+  badge.textContent=who==="papa"?"👨 Papá":"👩 Mamá";
+  badge.style.background=who==="papa"?"#3B82F633":"#EC489933";
+  badge.style.border=`1px solid ${who==="papa"?"#3B82F6":"#EC4899"}`;
+  badge.style.color=who==="papa"?"#3B82F6":"#EC4899";
+  document.getElementById("panel-note").value=ent.note||"";
+  panelPhotos=(ent.photos||[]).map(p=>({...p,src:null}));
+  renderPhotoGrid();
+  document.getElementById("panel-overlay").style.display="flex";
+  document.body.style.overflow="hidden";
+}
+
+function closePanel(){
+  document.getElementById("panel-overlay").style.display="none";
+  document.body.style.overflow="";
+  panelKey=null; panelPhotos=[];
+}
+
+function saveNote(){
+  if(!panelKey)return;
+  meta[panelKey]={...(meta[panelKey]||{}),note:document.getElementById("panel-note").value};
+  saveMeta(); renderCalendar();
+  showToast("Nota guardada ✓");
+}
+
+function renderPhotoGrid(){
+  const grid=document.getElementById("photo-grid");
+  const noMsg=document.getElementById("no-photos-msg");
+  grid.innerHTML="";
+  if(!panelPhotos.length){noMsg.style.display="block";return;}
+  noMsg.style.display="none";
+  panelPhotos.forEach((ph,i)=>{
+    const div=document.createElement("div"); div.className="photo-thumb";
+    if(ph.src){
+      const img=document.createElement("img"); img.src=ph.src;
+      img.onclick=()=>openLightbox(i); div.appendChild(img);
+    } else {
+      div.innerHTML=`<div onclick="loadAndView(${i})" style="cursor:pointer;text-align:center;color:#94A3B8;font-size:11px;padding:8px;">☁️<br><span style="font-size:10px;">Toca para ver</span></div>`;
+    }
+    const del=document.createElement("button"); del.className="del-btn"; del.textContent="✕";
+    del.onclick=()=>removePhoto(i); div.appendChild(del);
+    grid.appendChild(div);
+  });
+}
+
+async function loadAndView(idx){
+  if(!token){showToast("Conéctate a Google Drive","warn");return;}
+  try{
+    const src=await downloadPhoto(panelPhotos[idx].driveId);
+    panelPhotos[idx].src=src; renderPhotoGrid(); openLightbox(idx);
+  }catch{showToast("No se pudo cargar","err");}
+}
+
+function triggerUpload(){
+  if(!token){showToast("Conéctate a Google Drive primero","warn");return;}
+  document.getElementById("file-input").click();
+}
+
+async function handleFiles(e){
+  const files=Array.from(e.target.files);
+  if(!files.length||!panelKey)return;
+  const btn=document.getElementById("upload-btn");
+  btn.innerHTML='<span class="spinner"></span>Subiendo a Drive…'; btn.disabled=true;
+  let count=0;
+  for(const file of files){
+    try{
+      const raw=await new Promise(res=>{const r=new FileReader();r.onload=()=>res(r.result);r.readAsDataURL(file);});
+      const comp=await compress(raw);
+      const fname=`Gabriel_${panelKey}_${Date.now()}.jpg`;
+      const res=await uploadPhoto(comp,fname);
+      if(res?.id){
+        panelPhotos.push({driveId:res.id,name:fname,src:comp});
+        meta[panelKey]={...(meta[panelKey]||{}),photos:[...(meta[panelKey]?.photos||[]),{driveId:res.id,name:fname}]};
+        count++;
+      }
+    }catch{showToast("Una foto no se pudo subir","warn");}
+  }
+  saveMeta(); renderPhotoGrid(); renderCalendar();
+  btn.innerHTML="📷 Agregar foto(s)"; btn.disabled=false;
+  if(count)showToast(`${count} foto(s) guardada(s) en Drive ✓`);
+  e.target.value="";
+}
+
+async function removePhoto(idx){
+  const ph=panelPhotos[idx];
+  if(token&&ph.driveId){ try{await deleteFile(ph.driveId);}catch{} }
+  panelPhotos.splice(idx,1);
+  meta[panelKey]={...(meta[panelKey]||{}),photos:panelPhotos.map(p=>({driveId:p.driveId,name:p.name}))};
+  saveMeta(); renderPhotoGrid(); renderCalendar();
+  showToast("Foto eliminada");
+}
+
+// ── Lightbox ───────────────────────────────────────────────────────────────
+function openLightbox(idx){ lbIdx=idx; updateLightbox(); document.getElementById("lightbox").style.display="flex"; }
+function closeLightbox(){ document.getElementById("lightbox").style.display="none"; lbIdx=null; }
+function updateLightbox(){
+  if(lbIdx===null)return;
+  document.getElementById("lightbox-img").src=panelPhotos[lbIdx].src||"";
+  document.getElementById("lb-counter").textContent=`${lbIdx+1} / ${panelPhotos.length}`;
+}
+function lbNav(dir){
+  lbIdx=(lbIdx+dir+panelPhotos.length)%panelPhotos.length;
+  if(!panelPhotos[lbIdx].src){ loadAndView(lbIdx).then(()=>{lbIdx; updateLightbox();}); return; }
+  updateLightbox();
+}
+
+// ── Generador PDF mensual ──────────────────────────────────────────────────
+async function generatePDF(){
+  if(!token||!folderId){showToast("Conéctate a Google Drive primero","warn");return;}
+  const btn=document.getElementById("pdf-btn");
+  btn.innerHTML='<span class="spinner"></span>Generando PDF…'; btn.disabled=true;
+
+  try{
+    const {jsPDF}=window.jspdf;
+    const doc=new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
+    const pfx=`${viewYear}-${String(viewMonth+1).padStart(2,"0")}`;
+    const moKeys=Object.keys(meta).filter(k=>k.startsWith(pfx)&&meta[k]?.who).sort();
+    const papaC=moKeys.filter(k=>meta[k]?.who==="papa").length;
+    const mamaC=moKeys.filter(k=>meta[k]?.who==="mama").length;
+
+    // ─ Portada ─
+    doc.setFillColor(15,23,42); doc.rect(0,0,210,297,"F");
+    doc.setTextColor(241,245,249);
+    doc.setFontSize(28); doc.setFont("helvetica","bold");
+    doc.text("Custodia Gabriel",105,60,{align:"center"});
+    doc.setFontSize(18); doc.setFont("helvetica","normal");
+    doc.text(`${MONTHS[viewMonth]} ${viewYear}`,105,75,{align:"center"});
+    doc.setFontSize(12);
+    doc.setTextColor(148,163,184);
+    doc.text(`Informe mensual de custodia`,105,90,{align:"center"});
+
+    // Resumen
+    doc.setFillColor(30,41,59); doc.roundedRect(20,105,170,50,4,4,"F");
+    doc.setTextColor(241,245,249); doc.setFontSize(13); doc.setFont("helvetica","bold");
+    doc.text("Resumen del mes",105,118,{align:"center"});
+    doc.setFont("helvetica","normal"); doc.setFontSize(11);
+    doc.setTextColor(59,130,246);
+    doc.text(`👨 Días con Papá: ${papaC}`,45,132);
+    doc.setTextColor(236,72,153);
+    doc.text(`👩 Días con Mamá: ${mamaC}`,45,142);
+    doc.setTextColor(148,163,184);
+    doc.text(`📅 Total días asignados: ${papaC+mamaC}`,45,152);
+
+    doc.setTextColor(100,116,139); doc.setFontSize(9);
+    doc.text(`Generado el ${new Date().toLocaleDateString("es-CO",{day:"2-digit",month:"long",year:"numeric"})}`,105,285,{align:"center"});
+
+    // ─ Páginas por día ─
+    for(const k of moKeys){
+      const ent=meta[k]; if(!ent)continue;
+      const [,m,d]=k.split("-");
+      const dateLabel=`${parseInt(d)} de ${MONTHS[parseInt(m)-1]} de ${viewYear}`;
+      const who=ent.who;
+      const whoLabel=who==="papa"?"Papá":"Mamá";
+      const whoColor=who==="papa"?[59,130,246]:[236,72,153];
+
+      doc.addPage();
+      doc.setFillColor(15,23,42); doc.rect(0,0,210,297,"F");
+
+      // Header día
+      doc.setFillColor(...whoColor,40);
+      doc.setDrawColor(...whoColor); doc.setLineWidth(0.5);
+      doc.roundedRect(10,10,190,22,3,3,"FD");
+      doc.setTextColor(...whoColor); doc.setFontSize(14); doc.setFont("helvetica","bold");
+      doc.text(`${who==="papa"?"👨":"👩"} ${dateLabel} — ${whoLabel}`,105,24,{align:"center"});
+
+      let yPos=42;
+
+      // Nota
+      if(ent.note){
+        doc.setFillColor(30,41,59); doc.roundedRect(10,yPos,190,10,"F");
+        doc.setTextColor(148,163,184); doc.setFontSize(9); doc.setFont("helvetica","bold");
+        doc.text("NOTA",15,yPos+7);
+        yPos+=14;
+        doc.setFillColor(30,41,59); doc.roundedRect(10,yPos,190,20,"F");
+        doc.setTextColor(241,245,249); doc.setFontSize(10); doc.setFont("helvetica","normal");
+        const lines=doc.splitTextToSize(ent.note,180);
+        doc.text(lines,15,yPos+8);
+        yPos+=26;
+      }
+
+      // Fotos
+      const photos=ent.photos||[];
+      if(photos.length){
+        doc.setTextColor(148,163,184); doc.setFontSize(9); doc.setFont("helvetica","bold");
+        doc.text(`FOTOS DE SOPORTE (${photos.length})`,15,yPos);
+        yPos+=6;
+
+        let col=0; const imgW=58,imgH=44,gap=6,marginL=10;
+        for(const ph of photos){
+          try{
+            // Descargar foto desde Drive
+            const src=await downloadPhoto(ph.driveId);
+            const xPos=marginL+(imgW+gap)*col;
+            doc.addImage(src,"JPEG",xPos,yPos,imgW,imgH,undefined,"FAST");
+            col++;
+            if(col>=3){col=0;yPos+=imgH+gap;
+              if(yPos>240){doc.addPage();doc.setFillColor(15,23,42);doc.rect(0,0,210,297,"F");yPos=15;}
+            }
+          }catch{}
+        }
+      }
+    }
+
+    // Guardar PDF en Drive
+    const pdfName=`Custodia_Gabriel_${MONTHS[viewMonth]}_${viewYear}.pdf`;
+    const pdfBytes=doc.output("arraybuffer");
+    const result=await uploadFileToDrive(pdfName,pdfBytes,"application/pdf");
+
+    btn.innerHTML="📄 Informe PDF mensual"; btn.disabled=false;
+    if(result?.id){
+      showToast(`PDF guardado en Drive: ${pdfName} ✓`);
+    } else {
+      showToast("Error al guardar PDF en Drive","err");
+    }
+  }catch(err){
+    console.error(err);
+    btn.innerHTML="📄 Informe PDF mensual"; btn.disabled=false;
+    showToast("Error generando PDF","err");
+  }
+}
+</script>
+</body>
+</html>
